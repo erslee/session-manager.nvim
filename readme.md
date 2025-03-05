@@ -13,10 +13,10 @@ A Neovim plugin for session management using **Telescope**. Quickly save and loa
 Using **lazy.nvim**:
 ```lua
 {
-  "yourgithub/telescope-session-manager",
+  "erslee/session-manager.nvim",
   dependencies = { "nvim-telescope/telescope.nvim" },
   config = function()
-    require("telescope_session_manager").setup()
+    require("session-manager").setup()
   end
 }
 ```
@@ -24,10 +24,10 @@ Using **lazy.nvim**:
 Using **packer.nvim**:
 ```lua
 use {
-  "yourgithub/telescope-session-manager",
+  "erslee/session-manager.nvim",
   requires = { "nvim-telescope/telescope.nvim" },
   config = function()
-    require("telescope_session_manager").setup()
+    require("session-manager").setup()
   end
 }
 ```
@@ -39,7 +39,7 @@ use {
 - `:LoadSession` → Open a Telescope picker to load a session.
 
 ### Keybindings:
-- `<leader>ss` → Save session.
+- `<leader>mm` → Save session.
 - `<leader>ls` → Load session.
 
 ## 🔧 Configuration
