@@ -1,7 +1,7 @@
 local M = {}
 
--- Load a session using a simple input list
-M.load_session = function()
+-- Load or delete a session using a simple input list
+M.manage_sessions = function()
 	local session_files = vim.fn.glob("._Session*.vim", false, true)
 
 	if #session_files == 0 then
@@ -9,7 +9,7 @@ M.load_session = function()
 		return
 	end
 
-	local choices = { "Select a session to load:" }
+	local choices = { "Select a session to load or delete:", "0: Delete a session" }
 	for i, file in ipairs(session_files) do
 		table.insert(choices, i .. ": " .. file)
 	end
@@ -18,6 +18,18 @@ M.load_session = function()
 	if choice > 0 and session_files[choice] then
 		vim.cmd("silent! source " .. session_files[choice])
 		print("Loaded session: " .. session_files[choice])
+	elseif choice == 0 then
+		local delete_choices = { "Select a session to delete:" }
+		for i, file in ipairs(session_files) do
+			table.insert(delete_choices, i .. ": " .. file)
+		end
+		local delete_choice = vim.fn.inputlist(delete_choices)
+		if delete_choice > 0 and session_files[delete_choice] then
+			os.remove(session_files[delete_choice])
+			print("Deleted session: " .. session_files[delete_choice])
+		else
+			print("Invalid selection or cancelled.")
+		end
 	else
 		print("Invalid selection or cancelled.")
 	end
@@ -42,10 +54,10 @@ end
 
 -- Setup function to initialize keybindings
 M.setup = function()
-	vim.api.nvim_create_user_command("LoadSession", M.load_session, {})
+	vim.api.nvim_create_user_command("ManageSessions", M.manage_sessions, {})
 	vim.api.nvim_create_user_command("SaveSession", M.save_session, {})
 
-	vim.keymap.set("n", "<leader>ls", M.load_session, { desc = "Load session" })
+	vim.keymap.set("n", "<leader>ms", M.manage_sessions, { desc = "Manage sessions (Load/Delete)" })
 	vim.keymap.set("n", "<leader>ss", M.save_session, { desc = "Save session with a name" })
 end
 
