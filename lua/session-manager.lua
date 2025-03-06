@@ -7,7 +7,7 @@ local function create_floating_window()
 	local col = math.floor((vim.o.columns - width) / 2)
 
 	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_open_win(buf, true, {
+	local win = vim.api.nvim_open_win(buf, true, {
 		relative = "editor",
 		width = width,
 		height = height,
@@ -17,7 +17,7 @@ local function create_floating_window()
 		border = "rounded",
 	})
 
-	return buf
+	return buf, win
 end
 
 -- Load or delete a session using a floating window
@@ -29,7 +29,7 @@ M.manage_sessions = function()
 		return
 	end
 
-	local buf = create_floating_window()
+	local buf, win = create_floating_window()
 	vim.api.nvim_buf_set_lines(
 		buf,
 		0,
@@ -57,20 +57,25 @@ M.manage_sessions = function()
 		"<cmd>lua require('session-manager').delete_selected_session()<CR>",
 		{ noremap = true, silent = true }
 	)
+	M.current_win = win
 end
 
 M.load_selected_session = function()
 	local file = vim.fn.getline(".")
 	vim.cmd("silent! source " .. file)
 	print("Loaded session: " .. file)
-	vim.api.nvim_win_close(0, true)
+	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
+		vim.api.nvim_win_close(M.current_win, true)
+	end
 end
 
 M.delete_selected_session = function()
 	local file = vim.fn.getline(".")
 	os.remove(file)
 	print("Deleted session: " .. file)
-	vim.api.nvim_win_close(0, true)
+	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
+		vim.api.nvim_win_close(M.current_win, true)
+	end
 end
 
 -- Save a session with a chosen name
