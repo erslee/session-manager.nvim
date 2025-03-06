@@ -1,7 +1,7 @@
 local M = {}
 
 local function create_floating_window()
-	local width = math.floor(vim.o.columns * 0.4)
+	local width = math.floor(vim.o.columns * 0.2)
 	local height = math.floor(vim.o.lines * 0.4)
 	local row = math.floor((vim.o.lines - height) / 2)
 	local col = math.floor((vim.o.columns - width) / 2)
@@ -15,6 +15,10 @@ local function create_floating_window()
 		col = col,
 		style = "minimal",
 		border = "rounded",
+		title = "Select a session:",
+		title_pos = "center",
+		border = "double",
+		footer = "[d] - to delete, [q] - to quit",
 	})
 
 	return buf, win
@@ -30,7 +34,6 @@ M.manage_sessions = function()
 	end
 
 	local buf, win = create_floating_window()
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Select a session:", "[d] - to delete, [q] - to quit" })
 	for _, file in ipairs(session_files) do
 		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { file })
 	end
