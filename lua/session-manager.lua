@@ -30,13 +30,7 @@ M.manage_sessions = function()
 	end
 
 	local buf, win = create_floating_window()
-	vim.api.nvim_buf_set_lines(
-		buf,
-		0,
-		-1,
-		false,
-		{ "Select a session to load or delete:", "Press d to delete a session" }
-	)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Select a session:", "[d] - to delete, [q] - to quit" })
 	for _, file in ipairs(session_files) do
 		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { file })
 	end
@@ -53,6 +47,14 @@ M.manage_sessions = function()
 	vim.api.nvim_buf_set_keymap(
 		buf,
 		"n",
+		"q",
+		"<cmd>lua require('session-manager').close_window()<CR>",
+		{ noremap = true, silent = true }
+	)
+	M.current_win = win
+	vim.api.nvim_buf_set_keymap(
+		buf,
+		"n",
 		"d",
 		"<cmd>lua require('session-manager').delete_selected_session()<CR>",
 		{ noremap = true, silent = true }
@@ -62,8 +64,19 @@ end
 
 M.load_selected_session = function()
 	local file = vim.fn.getline(".")
-	vim.cmd("silent! source " .. file)
+	if file then
+		vim.schedule(function()
+			vim.cmd("silent! source " .. file)
+			print("Loaded session: " .. file)
+		end)
+	end
 	print("Loaded session: " .. file)
+	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
+		vim.api.nvim_win_close(M.current_win, true)
+	end
+end
+
+M.close_window = function()
 	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
 		vim.api.nvim_win_close(M.current_win, true)
 	end
@@ -73,9 +86,6 @@ M.delete_selected_session = function()
 	local file = vim.fn.getline(".")
 	os.remove(file)
 	print("Deleted session: " .. file)
-	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
-		vim.api.nvim_win_close(M.current_win, true)
-	end
 end
 
 -- Save a session with a chosen name
