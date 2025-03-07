@@ -1,5 +1,7 @@
 local M = {}
 
+M.session_file = nil
+
 local function create_floating_window()
 	local width = math.floor(vim.o.columns * 0.2)
 	local height = math.floor(vim.o.lines * 0.4)
@@ -70,10 +72,10 @@ M.load_selected_session = function()
 	if file then
 		vim.schedule(function()
 			vim.cmd("silent! source " .. file)
+			M.session_file = file:gsub(".vim$", "")
 			print("Loaded session: " .. file)
 		end)
 	end
-	print("Loaded session: " .. file)
 	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
 		vim.api.nvim_win_close(M.current_win, true)
 	end
@@ -93,7 +95,8 @@ end
 
 -- Save a session with a chosen name
 M.save_session = function()
-	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = "._Session" }, function(session_name)
+	local default_name = M.session_file or "._Session"
+	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = default_name }, function(session_name)
 		if session_name and session_name ~= "" then
 			if not session_name:match("^%._Session") then
 				session_name = "._Session" .. session_name
@@ -102,6 +105,7 @@ M.save_session = function()
 
 			vim.cmd("mksession! " .. session_name)
 			print("Session saved as: " .. session_name)
+			M.session_file = session_name:gsub(".vim$", "")
 		else
 			print("Session save cancelled or invalid input.")
 		end
