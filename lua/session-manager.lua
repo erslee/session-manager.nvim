@@ -1,61 +1,33 @@
-local telescope = require("telescope")
-local pickers = require("telescope.pickers")
-local finders = require("telescope.finders")
-local sorters = require("telescope.sorters")
-local actions = require("telescope.actions")
-local action_state = require("telescope.actions.state")
-
 local M = {}
 
-local function create_picker(items, on_select)
-	-- Create a new buffer
-	local bufnr = vim.api.nvim_create_buf(false, true)
-	local winnr = vim.api.nvim_open_win(bufnr, true, {
+M.session_file = nil
+
+local function create_floating_window()
+	local width = math.floor(vim.o.columns * 0.2)
+	local height = math.floor(vim.o.lines * 0.4)
+	local row = math.floor((vim.o.lines - height) / 2)
+	local col = math.floor((vim.o.columns - width) / 2)
+
+	local buf = vim.api.nvim_create_buf(false, true)
+	local win = vim.api.nvim_open_win(buf, true, {
 		relative = "editor",
-		width = 60,
-		height = 20,
-		row = 10,
-		col = 10,
-		border = "rounded",
+		width = width,
+		height = height,
+		row = row,
+		col = col,
 		style = "minimal",
+		border = "rounded",
+		title = "Select a session:",
+		title_pos = "center",
+		border = "double",
+		footer = "[d] - to delete, [q] - to quit",
 	})
 
-	-- Make the buffer non-modifiable
-	vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
-	vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, items)
-	vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
-
-	-- Set up key mappings
-	local current_line = 1
-	local function move_cursor(direction)
-		current_line = math.max(1, math.min(#items, current_line + direction))
-		vim.api.nvim_win_set_cursor(winnr, { current_line, 0 })
-	end
-
-	local function select_item()
-		local selected_item = items[current_line]
-		vim.api.nvim_win_close(winnr, true)
-		on_select(selected_item)
-	end
-
-	vim.api.nvim_buf_set_keymap(bufnr, "n", "j", "<cmd>lua move_cursor(1)<CR>", { noremap = true, silent = true })
-	vim.api.nvim_buf_set_keymap(bufnr, "n", "k", "<cmd>lua move_cursor(-1)<CR>", { noremap = true, silent = true })
-	vim.api.nvim_buf_set_keymap(bufnr, "n", "<CR>", "<cmd>lua select_item()<CR>", { noremap = true, silent = true })
-	vim.api.nvim_buf_set_keymap(
-		bufnr,
-		"n",
-		"q",
-		"<cmd>lua vim.api.nvim_win_close(winnr, true)<CR>",
-		{ noremap = true, silent = true }
-	)
-
-	-- Set the initial cursor position
-	vim.api.nvim_win_set_cursor(winnr, { current_line, 0 })
+	return buf, win
 end
 
--- Load a session using Telescope
-M.load_session = function()
+-- Load or delete a session using a floating window
+M.manage_sessions = function()
 	local session_files = vim.fn.glob("._Session*.vim", false, true)
 
 	if #session_files == 0 then
@@ -63,35 +35,68 @@ M.load_session = function()
 		return
 	end
 
-	pickers
-		.new({}, {
-			prompt_title = "Load Session",
-			finder = finders.new_table(session_files),
-			sorter = sorters.get_generic_fuzzy_sorter(),
-			attach_mappings = function(prompt_bufnr, map)
-				local function load_selected_session()
-					local selection = action_state.get_selected_entry()
-					if selection then
-						actions.close(prompt_bufnr)
-						vim.schedule(function()
-							vim.cmd("silent! source " .. selection[1])
-							print("Loaded session: " .. selection[1])
-						end)
-					end
-				end
+	local buf, win = create_floating_window()
+	for _, file in ipairs(session_files) do
+		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { file })
+	end
 
-				map("i", "<CR>", load_selected_session)
-				map("n", "<CR>", load_selected_session)
+	vim.api.nvim_buf_set_option(buf, "modifiable", false)
+	vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+	vim.api.nvim_buf_set_keymap(
+		buf,
+		"n",
+		"<CR>",
+		"<cmd>lua require('session-manager').load_selected_session()<CR>",
+		{ noremap = true, silent = true }
+	)
+	vim.api.nvim_buf_set_keymap(
+		buf,
+		"n",
+		"q",
+		"<cmd>lua require('session-manager').close_window()<CR>",
+		{ noremap = true, silent = true }
+	)
+	M.current_win = win
+	vim.api.nvim_buf_set_keymap(
+		buf,
+		"n",
+		"d",
+		"<cmd>lua require('session-manager').delete_selected_session()<CR>",
+		{ noremap = true, silent = true }
+	)
+	M.current_win = win
+end
 
-				return true
-			end,
-		})
-		:find()
+M.load_selected_session = function()
+	local file = vim.fn.getline(".")
+	if file then
+		vim.schedule(function()
+			vim.cmd("silent! source " .. file)
+			M.session_file = file:gsub(".vim$", "")
+			print("Loaded session: " .. file)
+		end)
+	end
+	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
+		vim.api.nvim_win_close(M.current_win, true)
+	end
+end
+
+M.close_window = function()
+	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
+		vim.api.nvim_win_close(M.current_win, true)
+	end
+end
+
+M.delete_selected_session = function()
+	local file = vim.fn.getline(".")
+	os.remove(file)
+	print("Deleted session: " .. file)
 end
 
 -- Save a session with a chosen name
 M.save_session = function()
-	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = "._Session" }, function(session_name)
+	local default_name = M.session_file or "._Session"
+	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = default_name }, function(session_name)
 		if session_name and session_name ~= "" then
 			if not session_name:match("^%._Session") then
 				session_name = "._Session" .. session_name
@@ -100,6 +105,7 @@ M.save_session = function()
 
 			vim.cmd("mksession! " .. session_name)
 			print("Session saved as: " .. session_name)
+			M.session_file = session_name:gsub(".vim$", "")
 		else
 			print("Session save cancelled or invalid input.")
 		end
@@ -108,10 +114,10 @@ end
 
 -- Setup function to initialize keybindings
 M.setup = function()
-	vim.api.nvim_create_user_command("LoadSession", M.load_session, {})
+	vim.api.nvim_create_user_command("ManageSessions", M.manage_sessions, {})
 	vim.api.nvim_create_user_command("SaveSession", M.save_session, {})
 
-	vim.keymap.set("n", "<leader>ls", M.load_session, { desc = "Load session" })
+	vim.keymap.set("n", "<leader>ms", M.manage_sessions, { desc = "Manage sessions (Load/Delete)" })
 	vim.keymap.set("n", "<leader>mm", M.save_session, { desc = "Save session with a name" })
 end
 
