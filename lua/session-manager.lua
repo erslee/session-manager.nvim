@@ -29,7 +29,6 @@ end
 local function get_session_list()
 	local session_files = vim.fn.glob("._Session*.vim", false, true)
 	local sessions = {}
-	print(vim.inspect(session_files))
 	for _, file in ipairs(session_files) do
 		if not (file == nil) then
 			local stat = vim.uv.fs_stat(file)
@@ -50,7 +49,6 @@ end
 
 M.manage_sessions = function()
 	local sessions = get_session_list()
-	print(vim.inspect(sessions))
 
 	if #sessions == 0 then
 		print("No session files found!")
