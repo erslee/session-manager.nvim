@@ -26,18 +26,40 @@ local function create_floating_window()
 	return buf, win
 end
 
--- Load or delete a session using a floating window
-M.manage_sessions = function()
+local function get_session_list()
 	local session_files = vim.fn.glob("._Session*.vim", false, true)
+	local sessions = {}
+	print(vim.inspect(session_files))
+	for _, file in ipairs(session_files) do
+		if not (file == nil) then
+			local stat = vim.uv.fs_stat(file)
+			local modified_time = os.date("%Y-%m-%d %H:%M:%S", stat.mtime.sec)
+			table.insert(sessions, { name = file, time = modified_time })
+		end
+	end
+	table.sort(sessions, function(a, b)
+		return a.time > b.time
+	end)
+	return sessions
+end
 
-	if #session_files == 0 then
+local function session_line_to_filename(line)
+	local file = line:match("%- (._Session.*%.vim)$")
+	return file
+end
+
+M.manage_sessions = function()
+	local sessions = get_session_list()
+	print(vim.inspect(sessions))
+
+	if #sessions == 0 then
 		print("No session files found!")
 		return
 	end
 
 	local buf, win = create_floating_window()
-	for _, file in ipairs(session_files) do
-		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { file })
+	for _, session in ipairs(sessions) do
+		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { session.time .. " - " .. session.name })
 	end
 
 	vim.api.nvim_buf_set_option(buf, "modifiable", false)
@@ -68,7 +90,8 @@ M.manage_sessions = function()
 end
 
 M.load_selected_session = function()
-	local file = vim.fn.getline(".")
+	local line = vim.fn.getline(".")
+	local file = session_line_to_filename(line)
 	if file then
 		vim.schedule(function()
 			vim.cmd("silent! source " .. file)
@@ -88,7 +111,8 @@ M.close_window = function()
 end
 
 M.delete_selected_session = function()
-	local file = vim.fn.getline(".")
+	local line = vim.fn.getline(".")
+	local file = session_line_to_filename(line)
 	os.remove(file)
 	print("Deleted session: " .. file)
 end
@@ -112,7 +136,6 @@ M.save_session = function()
 	end)
 end
 
--- Setup function to initialize keybindings
 M.setup = function()
 	vim.api.nvim_create_user_command("ManageSessions", M.manage_sessions, {})
 	vim.api.nvim_create_user_command("SaveSession", M.save_session, {})
