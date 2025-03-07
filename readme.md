@@ -1,11 +1,11 @@
 
-# Telescope Session Manager
+# Session Manager
 
-A Neovim plugin for session management using **Telescope**. Quickly save and load sessions with a clean UI and fuzzy selection.
+A Neovim plugin for session management. Quickly save and load sessions with a clean UI.
 
 ## ✨ Features
 - 📂 **Save sessions** with a custom name (auto-appends `.vim`).
-- 🔍 **Load sessions** using a Telescope picker.
+- 🔍 **Load sessions** choose session to load from a list.
 - ⚡ **Quick keybindings** for seamless workflow.
 
 ## 📥 Installation
@@ -14,7 +14,6 @@ Using **lazy.nvim**:
 ```lua
 {
   "erslee/session-manager.nvim",
-  dependencies = { "nvim-telescope/telescope.nvim" },
   config = function()
     require("session-manager").setup()
   end
@@ -25,7 +24,6 @@ Using **packer.nvim**:
 ```lua
 use {
   "erslee/session-manager.nvim",
-  requires = { "nvim-telescope/telescope.nvim" },
   config = function()
     require("session-manager").setup()
   end
@@ -40,7 +38,7 @@ use {
 
 ### Keybindings:
 - `<leader>mm` → Save session.
-- `<leader>ls` → Load session.
+- `<leader>ms` → Load session.
 
 ## 🔧 Configuration
 The plugin works out of the box! Just call `setup()` in your Neovim config.
