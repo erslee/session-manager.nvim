@@ -1,5 +1,13 @@
 local M = {}
 
+M.config = {
+	session_prefix = "._Session",
+}
+
+M.setup = function(options)
+	M.config = vim.tbl_extend("force", M.config, options or {})
+end
+
 M.session_file = nil
 
 local function create_floating_window()
@@ -27,7 +35,7 @@ local function create_floating_window()
 end
 
 local function get_session_list()
-	local session_files = vim.fn.glob("._Session*.vim", false, true)
+	local session_files = vim.fn.glob(M.config.session_prefix .. "*.vim", false, true)
 	local sessions = {}
 	for _, file in ipairs(session_files) do
 		if not (file == nil) then
@@ -43,7 +51,7 @@ local function get_session_list()
 end
 
 local function session_line_to_filename(line)
-	local file = line:match("%- (._Session.*%.vim)$")
+	local file = line:match("%- (" .. M.config.session_prefix .. ".*%.vim)$")
 	return file
 end
 
@@ -117,11 +125,11 @@ end
 
 -- Save a session with a chosen name
 M.save_session = function()
-	local default_name = M.session_file or "._Session"
+	local default_name = M.session_file or M.config.session_prefix
 	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = default_name }, function(session_name)
 		if session_name and session_name ~= "" then
-			if not session_name:match("^%._Session") then
-				session_name = "._Session" .. session_name
+			if not session_name:match("^%" .. M.config.session_prefix) then
+				session_name = M.config.session_prefix .. session_name
 			end
 			session_name = session_name .. ".vim"
 
