@@ -15,7 +15,9 @@ Using **lazy.nvim**:
 {
   "erslee/session-manager.nvim",
   config = function()
-    require("session-manager").setup()
+    require("session-manager").setup({
+	  session_prefix = "._Session",
+    })
   end
 }
 ```
@@ -25,7 +27,9 @@ Using **packer.nvim**:
 use {
   "erslee/session-manager.nvim",
   config = function()
-    require("session-manager").setup()
+    require("session-manager").setup({
+	  session_prefix = "._Session",
+    })
   end
 }
 ```
@@ -34,7 +38,7 @@ use {
 
 ### Commands:
 - `:SaveSession` → Save a session with a custom name.
-- `:LoadSession` → Open a Telescope picker to load a session.
+- `:LoadSession` → Open a picker to load a session.
 
 ### Keybindings:
 - `<leader>mm` → Save session.
