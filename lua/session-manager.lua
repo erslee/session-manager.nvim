@@ -3,11 +3,8 @@ local M = {}
 M.config = {
 	session_prefix = "._Session",
 	branch_prefix = "feature/",
+	session_autoload = true,
 }
-
-M.setup = function(options)
-	M.config = vim.tbl_extend("force", M.config, options or {})
-end
 
 M.session_file = nil
 
@@ -65,6 +62,22 @@ local function session_line_to_filename(line)
 	return file
 end
 
+M.setup_autoload_session = function()
+	vim.api.nvim_create_autocmd("VimEnter", {
+		callback = function()
+			local session_file_name = M.config.session_prefix .. branch_name() .. ".vim"
+			print("Vim Etoer session autoload" .. session_file_name)
+
+			if vim.fn.filereadable(session_file_name) == 1 then
+				local choice = vim.fn.confirm("Session file found. Load it?", "&Yes\n&No", 1)
+				if choice == 1 then
+					M.load_session(session_file_name)
+				end
+			end
+		end,
+	})
+end
+
 M.manage_sessions_w_gitbranchname = function()
 	local sessions = get_session_list()
 	local session_looking_name = M.config.session_prefix .. branch_name() .. ".vim"
@@ -78,14 +91,18 @@ M.manage_sessions_w_gitbranchname = function()
 		local session_name = session.name
 		if session_name == session_looking_name then
 			print("Find session file: " .. session_looking_name)
-			vim.schedule(function()
-				vim.cmd("silent! source " .. session_name)
-				M.session_file = session_name:gsub(".vim$", "")
-				print("Loaded session: " .. session_name)
-			end)
+			M.load_session(session_name)
 			break
 		end
 	end
+end
+
+M.load_session = function(file)
+	vim.schedule(function()
+		vim.cmd("silent! source " .. file)
+		M.session_file = file:gsub(".vim$", "")
+		print("Loaded session: " .. file)
+	end)
 end
 
 M.manage_sessions = function()
@@ -133,11 +150,7 @@ M.load_selected_session = function()
 	local line = vim.fn.getline(".")
 	local file = session_line_to_filename(line)
 	if file then
-		vim.schedule(function()
-			vim.cmd("silent! source " .. file)
-			M.session_file = file:gsub(".vim$", "")
-			print("Loaded session: " .. file)
-		end)
+		M.load_session(file)
 	end
 	if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
 		vim.api.nvim_win_close(M.current_win, true)
@@ -194,8 +207,17 @@ M.save_session = function()
 end
 
 M.setup = function()
+	M.config = vim.tbl_extend("force", M.config, options or {})
+
 	vim.api.nvim_create_user_command("ManageSessions", M.manage_sessions, {})
 	vim.api.nvim_create_user_command("SaveSession", M.save_session, {})
+	vim.api.nvim_create_user_command("CurrentSessionName", function()
+		return M.session_file
+	end, {})
+
+	if M.config.session_autoload then
+		M.setup_autoload_session()
+	end
 
 	vim.keymap.set("n", "<leader>mg", M.manage_sessions_w_gitbranchname, { desc = "Load session w/ git branchname" })
 	vim.keymap.set("n", "<leader>mG", M.save_session_w_gitbranchname, { desc = "Save session w/ git branchname" })
