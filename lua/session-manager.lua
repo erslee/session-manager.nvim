@@ -2,6 +2,7 @@ local M = {}
 
 M.config = {
 	session_prefix = "._Session",
+	branch_prefix = "feature/",
 }
 
 M.setup = function(options)
@@ -9,6 +10,15 @@ M.setup = function(options)
 end
 
 M.session_file = nil
+
+local function branch_name()
+	local branch = vim.fn.system("git branch --show-current 2> /dev/null | tr -d '\n'")
+	if branch ~= "" then
+		return branch:match(M.config.branch_prefix .. "(.+)")
+	else
+		return ""
+	end
+end
 
 local function create_floating_window()
 	local width = math.floor(vim.o.columns * 0.2)
@@ -53,6 +63,29 @@ end
 local function session_line_to_filename(line)
 	local file = line:match("%- (" .. M.config.session_prefix .. ".*%.vim)$")
 	return file
+end
+
+M.manage_sessions_w_gitbranchname = function()
+	local sessions = get_session_list()
+	local session_looking_name = M.config.session_prefix .. branch_name() .. ".vim"
+
+	if #sessions == 0 then
+		print("No session files found!")
+		return
+	end
+
+	for _, session in ipairs(sessions) do
+		local session_name = session.name
+		if session_name == session_looking_name then
+			print("Find session file: " .. session_looking_name)
+			vim.schedule(function()
+				vim.cmd("silent! source " .. session_name)
+				M.session_file = session_name:gsub(".vim$", "")
+				print("Loaded session: " .. session_name)
+			end)
+			break
+		end
+	end
 end
 
 M.manage_sessions = function()
@@ -123,7 +156,24 @@ M.delete_selected_session = function()
 	print("Deleted session: " .. file)
 end
 
--- Save a session with a chosen name
+M.save_session_w_gitbranchname = function()
+	local default_name = M.session_file or M.config.session_prefix .. branch_name()
+	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = default_name }, function(session_name)
+		if session_name and session_name ~= "" then
+			if not session_name:match("^%" .. M.config.session_prefix) then
+				session_name = M.config.session_prefix .. session_name
+			end
+			session_name = session_name .. ".vim"
+
+			vim.cmd("mksession! " .. session_name)
+			print("Session saved as: " .. session_name)
+			M.session_file = session_name:gsub(".vim$", "")
+		else
+			print("Session save cancelled or invalid input.")
+		end
+	end)
+end
+
 M.save_session = function()
 	local default_name = M.session_file or M.config.session_prefix
 	vim.ui.input({ prompt = "Enter session name (without .vim): ", default = default_name }, function(session_name)
@@ -146,6 +196,8 @@ M.setup = function()
 	vim.api.nvim_create_user_command("ManageSessions", M.manage_sessions, {})
 	vim.api.nvim_create_user_command("SaveSession", M.save_session, {})
 
+	vim.keymap.set("n", "<leader>mg", M.manage_sessions_w_gitbranchname, { desc = "Load session w/ git branchname" })
+	vim.keymap.set("n", "<leader>mG", M.save_session_w_gitbranchname, { desc = "Save session w/ git branchname" })
 	vim.keymap.set("n", "<leader>ms", M.manage_sessions, { desc = "Manage sessions (Load/Delete)" })
 	vim.keymap.set("n", "<leader>mm", M.save_session, { desc = "Save session with a name" })
 end
