@@ -93,7 +93,7 @@ M.manage_sessions = function()
 
 	if #sessions == 0 then
 		print("No session files found!")
-		return
+		return false
 	end
 
 	local buf, win = create_floating_window()
@@ -126,6 +126,7 @@ M.manage_sessions = function()
 		{ noremap = true, silent = true }
 	)
 	M.current_win = win
+	return true
 end
 
 M.load_selected_session = function()
